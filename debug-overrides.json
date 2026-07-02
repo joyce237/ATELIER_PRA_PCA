@@ -1,0 +1,11 @@
+{
+  "spec": {
+    "containers": [{
+      "name": "debug",
+      "image": "alpine",
+      "command": ["sh"],
+      "volumeMounts": [{"name": "backup", "mountPath": "/backup"}]
+    }],
+    "volumes": [{"name": "backup", "persistentVolumeClaim": {"claimName": "pra-backup"}}]
+  }
+}
