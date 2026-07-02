@@ -282,9 +282,10 @@ Difficulté : Moyenne (~2 heures)
 * last_backup_file : nom du dernier backup présent dans /backup
 * backup_age_seconds : âge du dernier backup
 
-*..**Déposez ici une copie d'écran** de votre réussite..*
 
----------------------------------------------------
+
+---------------------------------------------------<img width="855" height="241" alt="docker 1" src="https://github.com/user-attachments/assets/2ad410f9-ceb5-42e0-974f-baf0d58ecb89" />
+
 ### **Atelier 2 : Choisir notre point de restauration**  
 Aujourd’hui nous restaurobs “le dernier backup”. Nous souhaitons **ajouter la capacité de choisir un point de restauration**.
 
