@@ -231,27 +231,46 @@ Faites preuve de pédagogie et soyez clair dans vos explications et procedures d
 **Exercice 1 :**  
 Quels sont les composants dont la perte entraîne une perte de données ?  
   
-*..Répondez à cet exercice ici..*
+Le seul composant dont la perte entraîne une perte de données est le PVC pra-data (le volume persistant contenant la base de données SQLite en production). Si ce PVC est supprimé sans backup récent, toutes les données sont perdues. Le pod lui-même ne contient pas de données — elles sont externalisées dans le PVC.
 
 **Exercice 2 :**  
 Expliquez nous pourquoi nous n'avons pas perdu les données lors de la supression du PVC pra-data  
   
-*..Répondez à cet exercice ici..*
+Nous n'avons pas perdu les données grâce au CronJob de sauvegarde automatique qui copie toutes les minutes la base de données SQLite du PVC pra-data vers le PVC pra-backup. Lors de la restauration, nous avons rejoué le job 50-job-restore.yaml qui a copié le dernier backup depuis pra-backup vers le nouveau pra-data.
 
 **Exercice 3 :**  
 Quels sont les RTO et RPO de cette solution ?  
   
-*..Répondez à cet exercice ici..*
+. RPO (Recovery Point Objective) : ~1 minute, car les sauvegardes sont effectuées toutes les minutes. On peut donc perdre au maximum 1 minute de données.
+. RTO (Recovery Time Objective) : ~5 à 10 minutes, le temps de recréer l'infrastructure (kubectl apply), restaurer le backup et relancer le port-forward.
 
 **Exercice 4 :**  
 Pourquoi cette solution (cet atelier) ne peux pas être utilisé dans un vrai environnement de production ? Que manque-t-il ?   
   
-*..Répondez à cet exercice ici..*
+Plusieurs limites empêchent cette solution d'être utilisée en production :
+
+Les backups sont sur le même cluster → si le cluster tombe, les backups sont perdus aussi
+Pas de réplication des données vers un site distant
+Pas de haute disponibilité → un seul pod Flask, un seul point de défaillance
+Pas de monitoring/alerting en cas de défaillance
+Pas de chiffrement des sauvegardes
+RTO trop long pour un environnement de production critique
+K3d est un cluster local non adapté à la production
+
+
   
 **Exercice 5 :**  
-Proposez une archtecture plus robuste.   
+Proposez une archtecture plus robuste.  
   
-*..Répondez à cet exercice ici..*
+Une architecture plus robuste inclurait :
+
+Multi-cluster : déploiement sur au moins 2 clusters dans des zones géographiques différentes
+Base de données managée : remplacer SQLite par PostgreSQL ou MySQL avec réplication (ex: AWS RDS Multi-AZ)
+Sauvegardes externalisées : stocker les backups sur un stockage objet externe (AWS S3, Azure Blob) hors du cluster
+Monitoring : Prometheus + Grafana + alerting automatique
+Ingress Controller : Traefik ou Nginx Ingress pour gérer le trafic
+CI/CD : pipeline automatisé pour les déploiements
+Chiffrement des sauvegardes et des communications
 
 ---------------------------------------------------
 Séquence 6 : Ateliers  
