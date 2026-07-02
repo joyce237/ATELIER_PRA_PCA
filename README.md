@@ -288,7 +288,92 @@ Difficulté : Moyenne (~2 heures)
 ### **Atelier 2 : Choisir notre point de restauration**  
 Aujourd’hui nous restaurobs “le dernier backup”. Nous souhaitons **ajouter la capacité de choisir un point de restauration**.
 
-*..Décrir ici votre procédure de restauration (votre runbook)..*  
+## Atelier 2 : Choisir notre point de restauration
+
+### Runbook de restauration
+
+#### Prérequis
+- Avoir accès au cluster K3d
+- Avoir des backups disponibles dans le PVC pra-backup
+
+#### Étape 1 — Lister les points de restauration disponibles
+
+kubectl -n pra run debug-backup \
+  --rm -it \
+  --image=alpine \
+  --overrides='{"spec":{"containers":[{"name":"debug","image":"alpine","command":["sh"],"stdin":true,"tty":true,"volumeMounts":[{"name":"backup","mountPath":"/backup"}]}],"volumes":[{"name":"backup","persistentVolumeClaim":{"claimName":"pra-backup"}}]}}'
+
+ls -lh /backup
+exit
+
+Vous verrez la liste des fichiers de backup disponibles, par exemple :
+  app-1782984242.db  -> backup du 02/07/2026 à 09h24
+  app-1782986102.db  -> backup du 02/07/2026 à 09h55
+
+#### Étape 2 — Choisir votre point de restauration
+
+Notez le nom du fichier que vous souhaitez restaurer.
+Exemple : app-1782984242.db
+
+#### Étape 3 — Créer un job de restauration ciblé
+
+Créez un fichier job-restore-custom.yaml :
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sqlite-restore-custom
+  namespace: pra
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: restore
+          image: alpine
+          command: ["/bin/sh","-c"]
+          args:
+            - |
+              cp /backup/app-1782984242.db /data/app.db
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: backup
+              mountPath: /backup
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: pra-data
+        - name: backup
+          persistentVolumeClaim:
+            claimName: pra-backup
+
+Remplacez app-1782984242.db par le fichier de votre choix.
+
+#### Étape 4 — Appliquer le job de restauration
+
+kubectl -n pra scale deployment flask --replicas=0
+kubectl apply -f job-restore-custom.yaml
+kubectl -n pra wait --for=condition=complete job/sqlite-restore-custom --timeout=60s
+
+#### Étape 5 — Relancer l'application
+
+kubectl -n pra scale deployment flask --replicas=1
+kubectl -n pra port-forward svc/flask 8080:80 >/tmp/web.log 2>&1 &
+
+#### Étape 6 — Vérifier la restauration
+
+https://.../count       -> nombre de messages restaurés
+https://.../consultation -> messages restaurés
+
+#### Étape 7 — Relancer les sauvegardes automatiques
+
+kubectl -n pra patch cronjob sqlite-backup -p '{"spec":{"suspend":false}}'
+
+### Résumé RPO/RTO
+
+RPO : 1 minute maximum (fréquence des backups)
+RTO : 5 à 10 minutes (temps de restauration manuel)
   
 ---------------------------------------------------
 Evaluation
